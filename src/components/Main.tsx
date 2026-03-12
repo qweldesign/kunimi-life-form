@@ -6,7 +6,7 @@ function Main() {
   const [count, setCount] = useState(1)
 
   const add = () => {
-    setCount(count + 1)
+    if (count < 6) setCount(count + 1)
   }
 
   const send = () => {
@@ -24,7 +24,9 @@ function Main() {
       {Array.from({ length: count }).map((_, i) => (
         <Form index={i + 1} />
       ))}
-      <button className="block mx-auto button is-medium is-orange" onClick={add}>参加者を追加</button>
+      {count < 6 && (
+        <button className="block mx-auto button is-medium is-orange" onClick={add}>参加者を追加</button>
+      )}
       <Note />
       <button className="block mx-auto button is-medium is-sky" onClick={send}>送信</button>
     </main>

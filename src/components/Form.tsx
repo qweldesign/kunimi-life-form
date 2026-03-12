@@ -5,11 +5,11 @@ function Form({ index }: { index: number }) {
       <table className="form">
         <tbody>
           <tr>
-            <th><label>ご氏名<span className="required">*必須</span></label></th>
+            <th><label>ご氏名{index === 1 && (<span className="required">*必須</span>)}</label></th>
             <td><input type="text" name={`ご氏名 (${index}人目)`} required /></td>
           </tr>
           <tr>
-            <th><label>生年月日<span className="required">*必須</span></label></th>
+            <th><label>生年月日{index === 1 && (<span className="required">*必須</span>)}</label></th>
             <td>
               <select name={`年 (${index}人目)`}>
                 {Array.from({ length: 100 }, (_, i) => {
@@ -32,7 +32,7 @@ function Form({ index }: { index: number }) {
             </td>
           </tr>
           <tr>
-            <th><label>ご住所<span className="required">*必須</span></label></th>
+            <th><label>ご住所{index === 1 && (<span className="required">*必須</span>)}</label></th>
             <td><input type="address" name={`ご住所 (${index}人目)`} required /></td>
           </tr>
         </tbody>
