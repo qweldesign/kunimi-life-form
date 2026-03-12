@@ -1,0 +1,85 @@
+@import "tailwindcss";
+
+@layer base {
+  body {
+    font-family: "\"Noto Sans JP\"", "\"游ゴシック\"", "\"Yu Gothic\"", sans-serif;
+  }
+}
+
+@layer layout {
+  .header {
+    @apply w-1/1 py-6;
+  }
+
+  .footer {
+    @apply h-72 bg-sky-400 text-white;
+  }
+
+  .footer__inner {
+    @apply flex flex-wrap items-center justify-center gap-6 max-w-6xl h-1/1 mx-auto px-6 py-24;
+  }
+}
+
+@layer project {
+  .sitebrand {
+    @apply block w-36 mx-auto;
+  }
+
+  .form {
+    @apply w-1/1 my-6;
+
+    tr {
+      @apply block md:table-row w-1/1 border-y-1 border-gray-400 text-left md:text-center;
+    }
+
+    th {
+      @apply block md:table-cell w-1/1 md:w-1/3 p-3 border-x-1 border-gray-400 bg-gray-100 font-normal text-left md:text-center;
+    }
+
+    td {
+      @apply block md:table-cell w-1/1 md:w-2/3 p-3 border-x-1 border-gray-400 text-left;
+    }
+
+    .required {
+      @apply text-orange-400 text-sm;
+    }
+
+    input {
+      @apply w-1/1 h-12 px-3 rounded-md bg-sky-200/15 text-lg;
+    }
+
+    select {
+      @apply h-12 me-3 px-3 rounded-md bg-sky-200/15 text-lg;
+    }
+
+    textarea {
+      @apply w-1/1 h-36 px-3 rounded-md bg-sky-200/15 text-lg;
+    }
+  }
+}
+
+@layer components {
+  .button {
+    @apply inline-flex items-center justify-center rounded-md transition-all duration-300 hover:scale-95;
+  }
+
+  .button.is-small {
+    @apply w-36 h-9 text-xs;
+  }
+
+  .button.is-medium {
+    @apply w-48 h-12 text-base;
+  }
+
+  .button.is-large {
+    @apply w-60 h-15 text-xl;
+  }
+
+  .button.is-sky {
+    @apply bg-sky-400 text-white hover:bg-sky-200 hover:text-black;
+  }
+
+  .button.is-orange {
+    @apply bg-orange-400 text-white hover:bg-orange-200 hover:text-black;
+  }
+}
