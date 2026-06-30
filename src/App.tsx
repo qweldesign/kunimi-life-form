@@ -58,6 +58,22 @@ async function fetchAddress(zip: string): Promise<string | null> {
   return null;
 }
 
+// ---- 生年月日（YYYY/MM/DD）の妥当性チェック ----
+function isValidBirthdate(value: string): boolean {
+  const match = value.trim().match(/^(\d{4})\/(\d{1,2})\/(\d{1,2})$/);
+  if (!match) return false;
+  const y = Number(match[1]);
+  const m = Number(match[2]);
+  const d = Number(match[3]);
+  const date = new Date(y, m - 1, d);
+  return (
+    date.getFullYear() === y &&
+    date.getMonth() === m - 1 &&
+    date.getDate() === d &&
+    date <= new Date()
+  );
+}
+
 // ======== 共通パーツ ========
 type LabelProps = {
   children: ReactNode;
@@ -143,7 +159,7 @@ function ParticipantFields({ index, participant, onChange, onRemove, errors }: P
           type="text"
           value={participant.name}
           onChange={(e) => onChange(index, "name", e.target.value)}
-          placeholder="山田 太郎"
+          placeholder="国見 まもる"
         />
         <ErrorMsg msg={errors[`name_${index}`]} />
       </div>
@@ -151,11 +167,14 @@ function ParticipantFields({ index, participant, onChange, onRemove, errors }: P
       <div className="mb-1">
         <Label required>生年月日</Label>
         <Input
-          type="date"
+          type="text"
+          inputMode="numeric"
           value={participant.birthdate}
           onChange={(e) => onChange(index, "birthdate", e.target.value)}
-          className="w-auto"
+          placeholder="1990/04/01"
+          className="w-40"
         />
+        <p className="text-xs text-gray-400 mt-1">例: 1990/04/01（西暦/月/日）</p>
         <ErrorMsg msg={errors[`birthdate_${index}`]} />
       </div>
     </fieldset>
@@ -211,7 +230,11 @@ export default function SurveyForm() {
     const e: FormErrors = {};
     formData.participants.forEach((p, i) => {
       if (!p.name.trim()) e[`name_${i}`] = "氏名を入力してください";
-      if (!p.birthdate) e[`birthdate_${i}`] = "生年月日を入力してください";
+      if (!p.birthdate.trim()) {
+        e[`birthdate_${i}`] = "生年月日を入力してください";
+      } else if (!isValidBirthdate(p.birthdate)) {
+        e[`birthdate_${i}`] = "正しい日付を「西暦/月/日」で入力してください";
+      }
     });
     if (!formData.email.trim()) {
       e.email = "メールアドレスを入力してください";
