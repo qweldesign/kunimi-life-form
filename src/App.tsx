@@ -6,6 +6,7 @@ type Step = "form" | "confirm" | "done";
 
 type Participant = {
   name: string;
+  furigana: string;
   birthdate: string;
 };
 
@@ -13,6 +14,7 @@ type FormData = {
   participants: Participant[];
   email: string;
   tel: string;
+  telTime: string;
   zip: string;
   address: string;
   assemblyPoint: string;
@@ -30,12 +32,13 @@ type Payload = Record<string, string>;
 const MAX_PARTICIPANTS = 6;
 const ASSEMBLY_POINTS = ["福井駅", "国見公民館"] as const;
 
-const emptyParticipant = (): Participant => ({ name: "", birthdate: "" });
+const emptyParticipant = (): Participant => ({ name: "", furigana: "", birthdate: "" });
 
 const initialFormData = (): FormData => ({
   participants: [emptyParticipant()],
   email: "",
   tel: "",
+  telTime: "",
   zip: "",
   address: "",
   assemblyPoint: "福井駅",
@@ -164,6 +167,17 @@ function ParticipantFields({ index, participant, onChange, onRemove, errors }: P
         <ErrorMsg msg={errors[`name_${index}`]} />
       </div>
 
+      <div className="mb-3">
+        <Label required>フリガナ</Label>
+        <Input
+          type="text"
+          value={participant.furigana}
+          onChange={(e) => onChange(index, "furigana", e.target.value)}
+          placeholder="クニミ マモル"
+        />
+        <ErrorMsg msg={errors[`furigana_${index}`]} />
+      </div>
+
       <div className="mb-1">
         <Label required>生年月日</Label>
         <Input
@@ -230,6 +244,11 @@ export default function SurveyForm() {
     const e: FormErrors = {};
     formData.participants.forEach((p, i) => {
       if (!p.name.trim()) e[`name_${i}`] = "氏名を入力してください";
+      if (!p.furigana.trim()) {
+        e[`furigana_${i}`] = "フリガナを入力してください";
+      } else if (!/^[ァ-ヶー\s　]+$/.test(p.furigana.trim())) {
+        e[`furigana_${i}`] = "カタカナで入力してください";
+      }
       if (!p.birthdate.trim()) {
         e[`birthdate_${i}`] = "生年月日を入力してください";
       } else if (!isValidBirthdate(p.birthdate)) {
@@ -241,6 +260,7 @@ export default function SurveyForm() {
     } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
       e.email = "正しいメールアドレスを入力してください";
     }
+    if (!formData.tel.trim()) e.tel = "電話番号を入力してください";
     if (!formData.address.trim()) e.address = "住所を入力してください";
     if (formData.hasAllergy === "有り" && !formData.allergyDetail.trim())
       e.allergyDetail = "アレルギーの内容を入力してください";
@@ -261,12 +281,14 @@ export default function SurveyForm() {
     const payload: Payload = {};
     formData.participants.forEach((p, i) => {
       payload[`参加者${i + 1}_氏名`] = p.name;
+      payload[`参加者${i + 1}_フリガナ`] = p.furigana;
       payload[`参加者${i + 1}_生年月日`] = p.birthdate;
     });
     payload["ご住所（郵便番号）"] = formData.zip;
     payload["ご住所"] = formData.address;
     payload["メールアドレス"] = formData.email;
-    if (formData.tel) payload["電話番号"] = formData.tel;
+    payload["電話番号"] = formData.tel;
+    if (formData.telTime) payload["折り返し希望時間帯"] = formData.telTime;
     payload["集合場所"] = formData.assemblyPoint;
     payload["アレルギー"] =
       formData.hasAllergy === "有り" ? `有り（${formData.allergyDetail}）` : "無し";
@@ -274,8 +296,6 @@ export default function SurveyForm() {
     if (formData.source) payload["参加経緯"] = formData.source;
     payload["代表者様氏名"] = formData.participants[0].name;
     payload["Email"] = formData.email;
-    payload["件名"] = "ツアー参加申し込み";
-    payload["備考"] = "";
 
     try {
       const res = await fetch("./api/send.php", {
@@ -322,12 +342,14 @@ export default function SurveyForm() {
             {formData.participants.map((p, i) => (
               <>
                 <ConfirmRow key={`name_${i}`} label={`参加者${i + 1} 氏名`} value={p.name} />
+                <ConfirmRow key={`fg_${i}`} label={`参加者${i + 1} フリガナ`} value={p.furigana} />
                 <ConfirmRow key={`bd_${i}`} label={`参加者${i + 1} 生年月日`} value={p.birthdate} />
               </>
             ))}
             <ConfirmRow label="ご住所" value={`〒${formData.zip} ${formData.address}`} />
             <ConfirmRow label="メールアドレス" value={formData.email} />
             <ConfirmRow label="電話番号" value={formData.tel} />
+            <ConfirmRow label="折り返し希望時間帯" value={formData.telTime} />
             <ConfirmRow label="集合場所" value={formData.assemblyPoint} />
             <ConfirmRow
               label="アレルギー"
@@ -402,15 +424,30 @@ export default function SurveyForm() {
           <ErrorMsg msg={errors.email} />
         </div>
 
-        {/* 電話番号（任意） */}
+        {/* 電話番号 */}
         <div className="mb-4">
-          <Label optional>電話番号</Label>
+          <Label required>電話番号</Label>
           <Input
             type="tel"
             value={formData.tel}
             onChange={(e) => setFormData((prev) => ({ ...prev, tel: e.target.value }))}
             placeholder="090-0000-0000"
             className="w-48"
+          />
+          <ErrorMsg msg={errors.tel} />
+        </div>
+
+        {/* 折り返し希望時間帯（任意） */}
+        <div className="mb-4">
+          <Label optional>折り返し希望時間帯</Label>
+          <p className="text-sm text-gray-600 mb-2">
+            確認のため折り返しお電話をさせて頂く場合がございます。ご都合の良い時間帯を教えてください。
+          </p>
+          <Textarea
+            value={formData.telTime}
+            onChange={(e) => setFormData((prev) => ({ ...prev, telTime: e.target.value }))}
+            placeholder="例: 平日10時〜17時"
+            rows={2}
           />
         </div>
 

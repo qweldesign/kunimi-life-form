@@ -32,7 +32,7 @@ $mailFooter = <<< TEXT
 TEXT;
 
 // 項目設定
-$require_fields = ['代表者様氏名', 'Email', 'ご住所', '集合場所', 'アレルギー']; // 必須項目
+$require_fields = ['代表者様氏名', 'Email', 'ご住所', '電話番号', '集合場所', 'アレルギー']; // 必須項目
 $Email = 'Email'; // フォームのEmail入力箇所のname属性の値
 
 // Origin & Referer チェック（CSRF対策）
