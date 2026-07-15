@@ -61,6 +61,18 @@ async function fetchAddress(zip: string): Promise<string | null> {
   return null;
 }
 
+// ---- 生年月日（YYYY/MM/DD）の自動整形 ----
+function formatBirthdate(raw: string): string {
+  const digits = raw.replace(/[^0-9]/g, "").slice(0, 8);
+  if (digits.length > 6) {
+    return digits.slice(0, 4) + "/" + digits.slice(4, 6) + "/" + digits.slice(6);
+  }
+  if (digits.length > 4) {
+    return digits.slice(0, 4) + "/" + digits.slice(4);
+  }
+  return digits;
+}
+
 // ---- 生年月日（YYYY/MM/DD）の妥当性チェック ----
 function isValidBirthdate(value: string): boolean {
   const match = value.trim().match(/^(\d{4})\/(\d{1,2})\/(\d{1,2})$/);
@@ -136,11 +148,12 @@ type ParticipantFieldsProps = {
   index: number;
   participant: Participant;
   onChange: (index: number, field: keyof Participant, value: string) => void;
+  onChangeBirthdate: (index: number, raw: string) => void;
   onRemove: () => void;
   errors: FormErrors;
 };
 
-function ParticipantFields({ index, participant, onChange, onRemove, errors }: ParticipantFieldsProps) {
+function ParticipantFields({ index, participant, onChange, onChangeBirthdate, onRemove, errors }: ParticipantFieldsProps) {
   return (
     <fieldset className="border border-gray-200 rounded-lg px-5 py-4 mb-4">
       <legend className="flex items-center gap-3 text-sm font-bold text-green-700 px-1">
@@ -184,7 +197,7 @@ function ParticipantFields({ index, participant, onChange, onRemove, errors }: P
           type="text"
           inputMode="numeric"
           value={participant.birthdate}
-          onChange={(e) => onChange(index, "birthdate", e.target.value)}
+          onChange={(e) => onChangeBirthdate(index, e.target.value)}
           placeholder="1990/04/01"
           className="w-40"
         />
@@ -208,6 +221,16 @@ export default function SurveyForm() {
     setFormData((prev) => {
       const participants = [...prev.participants];
       participants[index] = { ...participants[index], [field]: value };
+      return { ...prev, participants };
+    });
+  };
+
+  // ---- 生年月日自動整形 ----
+  const handleBirthdateChange = (index: number, raw: string) => {
+    const formatted = formatBirthdate(raw);
+    setFormData((prev) => {
+      const participants = [...prev.participants];
+      participants[index] = { ...participants[index], birthdate: formatted };
       return { ...prev, participants };
     });
   };
@@ -252,7 +275,7 @@ export default function SurveyForm() {
       if (!p.birthdate.trim()) {
         e[`birthdate_${i}`] = "生年月日を入力してください";
       } else if (!isValidBirthdate(p.birthdate)) {
-        e[`birthdate_${i}`] = "正しい日付を「西暦/月/日」で入力してください";
+        e[`birthdate_${i}`] = "正しい日付を入力してください（例: 1990/04/01）";
       }
     });
     if (!formData.email.trim()) {
@@ -397,6 +420,7 @@ export default function SurveyForm() {
             index={i}
             participant={p}
             onChange={handleParticipantChange}
+            onChangeBirthdate={handleBirthdateChange}
             onRemove={() => removeParticipant(i)}
             errors={errors}
           />
