@@ -317,8 +317,6 @@ export default function SurveyForm() {
       formData.hasAllergy === "有り" ? `有り（${formData.allergyDetail}）` : "無し";
     if (formData.purpose) payload["参加目的"] = formData.purpose;
     if (formData.source) payload["参加経緯"] = formData.source;
-    payload["代表者様氏名"] = formData.participants[0].name;
-    payload["Email"] = formData.email;
 
     try {
       const res = await fetch("./api/send.php", {
