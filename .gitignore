@@ -1,5 +1,8 @@
 # Composer
-vendor/
+public/inc/vendor/
+
+# 環境変数
+public/inc/.env
 
 # Logs
 logs
