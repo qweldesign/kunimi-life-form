@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { Fragment, useState } from "react";
 import type { ChangeEvent, FormEvent, ReactNode, InputHTMLAttributes, TextareaHTMLAttributes } from "react";
 
 // ======== 型定義 ========
@@ -31,6 +31,10 @@ type Payload = Record<string, string>;
 // ======== 定数 ========
 const MAX_PARTICIPANTS = 6;
 const ASSEMBLY_POINTS = ["福井駅", "国見公民館"] as const;
+// ボット対策の見えない入力欄 (ハニーポット) の name 属性 (public/inc/.env の HONEYPOT_FIELD と合わせる)
+const HONEYPOT_FIELD = "website_url";
+// send.php の送信先
+const SEND_URL = "./api/send.php";
 
 const emptyParticipant = (): Participant => ({ name: "", furigana: "", birthdate: "" });
 
@@ -47,6 +51,18 @@ const initialFormData = (): FormData => ({
   purpose: "",
   source: "",
 });
+
+// ---- 送信失敗時のメッセージ (send.php のレスポンスから) ----
+async function sendErrorMessage(res: Response): Promise<string> {
+  const body: { errors?: Record<string, string>; retryAfter?: number } = await res.json().catch(() => ({}));
+  if (res.status === 400 && body.errors) {
+    return Object.values(body.errors).join("\n") + "\n「修正する」から入力内容をご確認ください。";
+  }
+  if (res.status === 429) {
+    return `続けて送信することはできません。${body.retryAfter ?? 60}秒ほど待ってから、もう一度お試しください。`;
+  }
+  return "送信に失敗しました。時間をおいて、もう一度お試しください。";
+}
 
 // ---- 郵便番号 → 住所 ----
 async function fetchAddress(zip: string): Promise<string | null> {
@@ -215,6 +231,10 @@ export default function SurveyForm() {
   const [zipLoading, setZipLoading] = useState(false);
   const [sending, setSending] = useState(false);
   const [errors, setErrors] = useState<FormErrors>({});
+  // 確認画面の送信エラーなどのメッセージ
+  const [sendMessage, setSendMessage] = useState("");
+  // ボット対策の見えない入力欄 (人は入力しない. 確認画面には表示しない)
+  const [honeypot, setHoneypot] = useState("");
 
   // ---- 参加者操作 ----
   const handleParticipantChange = (index: number, field: keyof Participant, value: string) => {
@@ -269,7 +289,7 @@ export default function SurveyForm() {
       if (!p.name.trim()) e[`name_${i}`] = "氏名を入力してください";
       if (!p.furigana.trim()) {
         e[`furigana_${i}`] = "フリガナを入力してください";
-      } else if (!/^[ァ-ヶー\s　]+$/.test(p.furigana.trim())) {
+      } else if (!/^[ァ-ヶー\s]+$/.test(p.furigana.trim())) {
         e[`furigana_${i}`] = "カタカナで入力してください";
       }
       if (!p.birthdate.trim()) {
@@ -295,12 +315,14 @@ export default function SurveyForm() {
     const errs = validate();
     setErrors(errs);
     if (Object.keys(errs).length > 0) return;
+    setSendMessage("");
     setStep("confirm");
   };
 
   // ---- 送信 ----
   const handleSend = async () => {
     setSending(true);
+    setSendMessage("");
     const payload: Payload = {};
     formData.participants.forEach((p, i) => {
       payload[`参加者${i + 1}_氏名`] = p.name;
@@ -317,9 +339,10 @@ export default function SurveyForm() {
       formData.hasAllergy === "有り" ? `有り（${formData.allergyDetail}）` : "無し";
     if (formData.purpose) payload["参加目的"] = formData.purpose;
     if (formData.source) payload["参加経緯"] = formData.source;
+    payload[HONEYPOT_FIELD] = honeypot;
 
     try {
-      const res = await fetch("./api/send.php", {
+      const res = await fetch(SEND_URL, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
@@ -327,13 +350,13 @@ export default function SurveyForm() {
       if (res.ok) {
         setStep("done");
       } else {
-        const text = await res.text();
-        console.error("Server error:", text);
-        alert("送信に失敗しました（サーバーエラー）");
+        // 送信失敗 (send.php は入力の不備などを JSON で返す)
+        setSendMessage(await sendErrorMessage(res));
       }
     } catch (err) {
+      // ネットワークエラー
       console.error("Network error:", err);
-      alert("送信に失敗しました（通信エラー）");
+      setSendMessage("通信に失敗しました。通信環境をご確認のうえ、もう一度お試しください。");
     } finally {
       setSending(false);
     }
@@ -361,11 +384,11 @@ export default function SurveyForm() {
         <table className="w-full border-collapse mb-6">
           <tbody>
             {formData.participants.map((p, i) => (
-              <>
-                <ConfirmRow key={`name_${i}`} label={`参加者${i + 1} 氏名`} value={p.name} />
-                <ConfirmRow key={`fg_${i}`} label={`参加者${i + 1} フリガナ`} value={p.furigana} />
-                <ConfirmRow key={`bd_${i}`} label={`参加者${i + 1} 生年月日`} value={p.birthdate} />
-              </>
+              <Fragment key={i}>
+                <ConfirmRow label={`参加者${i + 1} 氏名`} value={p.name} />
+                <ConfirmRow label={`参加者${i + 1} フリガナ`} value={p.furigana} />
+                <ConfirmRow label={`参加者${i + 1} 生年月日`} value={p.birthdate} />
+              </Fragment>
             ))}
             <ConfirmRow label="ご住所" value={`〒${formData.zip} ${formData.address}`} />
             <ConfirmRow label="メールアドレス" value={formData.email} />
@@ -380,6 +403,12 @@ export default function SurveyForm() {
             <ConfirmRow label="参加経緯" value={formData.source} />
           </tbody>
         </table>
+
+        {sendMessage && (
+          <p role="alert" className="mb-6 px-4 py-3 rounded bg-red-50 text-red-700 text-sm whitespace-pre-line">
+            {sendMessage}
+          </p>
+        )}
 
         <div className="flex justify-end gap-3 mt-6">
           <button
@@ -588,6 +617,20 @@ export default function SurveyForm() {
             value={formData.source}
             onChange={(e) => setFormData((prev) => ({ ...prev, source: e.target.value }))}
             rows={3}
+          />
+        </div>
+
+        {/* ボット対策の見えない入力欄 (人には表示しない) */}
+        <div aria-hidden="true" className="sr-only">
+          <label htmlFor="your-website">この欄は空のままにしてください</label>
+          <input
+            id="your-website"
+            type="text"
+            name={HONEYPOT_FIELD}
+            tabIndex={-1}
+            autoComplete="off"
+            value={honeypot}
+            onChange={(e) => setHoneypot(e.target.value)}
           />
         </div>
 
